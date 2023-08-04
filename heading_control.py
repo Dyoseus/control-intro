@@ -3,6 +3,7 @@ import sys
 import signal
 from pid import PID
 import numpy as np
+import math
 
 
 def set_rc_channel_pwm(mav, channel_id, pwm=1500):
@@ -76,9 +77,9 @@ def main():
     desired_heading_deg = float(input("Enter target heading: "))
 
     # TODO: convert heading to radians
-    desired_heading = None
+    desired_heading = np.deg2rad(desired_heading_deg)
 
-    pid = PID(0.5, 0.0, 10.0, 100)
+    pid = PID(70, 0, 30, 100)
 
     while True:
         # get yaw from the vehicle
@@ -86,17 +87,29 @@ def main():
         yaw = msg.yaw
         yaw_rate = msg.yawspeed
 
+        if yaw < 0:
+            yaw = yaw + math.pi * 2
+
+        
+
         print("Heading: ", np.rad2deg(yaw))
 
         # calculate error
         error = desired_heading - yaw
         print("Error: ", np.rad2deg(error))
 
+        if error > np.pi /2 and error < np.pi:
+            error = 1
+        elif error < 3* np.pi /2 and error > np.pi:
+            error = -1
+        else:
+            error = np.sin(error)
+
         output = pid.update(error, error_derivative=yaw_rate)
         print("Output: ", output)
 
         # set vertical power
-        set_rotation_power(mav, -output)
+        set_rotation_power(mav, output)
 
 
 if __name__ == "__main__":
